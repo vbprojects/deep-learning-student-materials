@@ -220,12 +220,12 @@ def train_model(device, model, train_loader, val_loader, num_epochs=10, lr=0.001
     """
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
+    optimizer = optim.NAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-3)
+    # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
 
-    for epoch in range(num_epochs):
+    for epoch in range(num_epochs + 3):
         print(f'\nEpoch {epoch+1}/{num_epochs}')
         print('-' * 30)
 
@@ -732,7 +732,7 @@ def test_assignment_extension(MobileNet, accelerator, train_loader, val_loader, 
     print("="*80)
 
     try:
-        model = MobileNet.MobileNet(num_classes=num_classes, dropout_prob=0.2).to(accelerator)
+        model = MobileNet.MobileNet(num_classes=num_classes, dropout_prob=0.1).to(accelerator)
 
         history = train_model(accelerator, model, train_loader, val_loader, num_epochs = 5, lr = 0.001, feature_extract = False, step_size = 3, gamma = 0.01)
         plot_training_history(history, "MobileNet_per_extension")
@@ -763,16 +763,16 @@ def main() -> None:
         base_ds, train_idx, val_idx, seed = seed, batch_size = batch_size,
         num_workers = num_workers, image_size = (150, 150), train_aug = "resize_flip"
     )
-    VGGNet = import_module("VGGNet")
-    NiN = import_module("NiN")
-    GoogLeNet = import_module("GoogLeNet")
-    ResNet = import_module("ResNet")
-    transfer_learning = import_module("transfer_learning")
-    test_VGGNet(VGGNet.VGGNet, accelerator, train_loader_150, val_loader_150, num_classes)
-    test_NiN(NiN.NiN, accelerator, train_loader_150, val_loader_150, num_classes)
-    test_GoogLeNet(GoogLeNet.GoogLeNet, accelerator, train_loader_150, val_loader_150, num_classes)
-    test_ResNet(ResNet.ResNet, accelerator, train_loader_150, val_loader_150, num_classes)
-    test_transfer_learning(transfer_learning, accelerator, train_loader_150, val_loader_150, num_classes)
+    # VGGNet = import_module("VGGNet")
+    # NiN = import_module("NiN")
+    # GoogLeNet = import_module("GoogLeNet")
+    # ResNet = import_module("ResNet")
+    # transfer_learning = import_module("transfer_learning")
+    # test_VGGNet(VGGNet.VGGNet, accelerator, train_loader_150, val_loader_150, num_classes)
+    # test_NiN(NiN.NiN, accelerator, train_loader_150, val_loader_150, num_classes)
+    # test_GoogLeNet(GoogLeNet.GoogLeNet, accelerator, train_loader_150, val_loader_150, num_classes)
+    # test_ResNet(ResNet.ResNet, accelerator, train_loader_150, val_loader_150, num_classes)
+    # test_transfer_learning(transfer_learning, accelerator, train_loader_150, val_loader_150, num_classes)
     train_loader_224, val_loader_224 = make_loaders(base_ds, train_idx, val_idx, seed = seed, batch_size = batch_size, num_workers = num_workers, image_size = 224, train_aug = "random_resized_crop")
     MobileNet = import_module("MobileNet")
     test_assignment_extension(MobileNet, accelerator, train_loader_224, val_loader_224, num_classes)
