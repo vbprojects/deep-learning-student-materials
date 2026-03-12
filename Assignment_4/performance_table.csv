@@ -1,0 +1,4 @@
+metric,network without attention, network with attention
+validation loss,?,?
+validation token accuracy,?,?
+validation BLEU,?,?

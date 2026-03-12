@@ -1,0 +1,39 @@
+import random
+import torch
+import torch.nn as nn
+
+
+class Seq2Seq(nn.Module):
+
+    def __init__(self, encoder, decoder, device):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.device = device
+
+    def forward(self, src, src_lengths, tgt, teacher_forcing_ratio=0.5):
+        batch_size = src.shape[0]
+        tgt_len = tgt.shape[1]
+        tgt_vocab_size = self.decoder.output_dim
+        tensor_of_logits_for_many_tokens = torch.zeros(batch_size, tgt_len, tgt_vocab_size).to(self.device)
+
+        # TODO: Assign to local variables `sequence_of_output_features` and `tensor_with_final_hidden_states`
+        # the output of passing the provided source and the provided list of lengths to the encoder.
+        raise NotImplementedError
+
+        SOS_IDX = 1
+        input = torch.full((batch_size,), SOS_IDX, dtype=torch.long, device=self.device)
+        for t in range(0, tgt_len):
+
+            # TODO: Assign to local variables `tensor_of_logits`, `tensor_with_final_hidden_states`, and a placeholder
+            # the output passing the input, tensor with final hidden states, sequence of output features, and source mask to the decoder.
+            raise NotImplementedError
+
+            tensor_of_logits_for_many_tokens[:, t, :] = tensor_of_logits
+            teacher_force = random.random() < teacher_forcing_ratio
+            top1 = tensor_of_logits.argmax(1)
+            # TODO: If teacher forcing is used, redefine input as a tensor of all target token indices at position t.
+            # Otherwise, redefine input as the predicted token index.
+            raise NotImplementedError
+
+        return tensor_of_logits_for_many_tokens
