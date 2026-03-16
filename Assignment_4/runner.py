@@ -21,6 +21,8 @@ import time
 
 import math
 
+from collections import Counter
+
 
 def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
 
@@ -212,6 +214,60 @@ def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+    def extract_tokens_until_eos(indices, lang):
+        tokens = []
+        for idx in indices:
+            idx = int(idx)
+            if idx == EOS_IDX:
+                break
+            if idx in (PAD_IDX, SOS_IDX):
+                continue
+            tokens.append(lang.index2word[idx])
+        return tokens
+    
+    def ngrams(tokens, n):
+        return [tuple(tokens[i:i+n]) for i in range(len(tokens) - n + 1)]
+
+    def corpus_bleu(list_of_references, hypotheses, max_n = 4):
+        clipped_counts = [0] * max_n
+        total_counts = [0] * max_n
+        ref_length = 0
+        hyp_length = 0
+        for references, hypothesis in zip(list_of_references, hypotheses):
+            reference = references[0]
+            ref_length += len(reference)
+            hyp_length += len(hypothesis)
+            for n in range(1, max_n + 1):
+                hyp_ngrams = Counter(ngrams(hypothesis, n))
+                ref_ngrams = Counter(ngrams(reference, n))
+                total_counts[n - 1] += sum(hyp_ngrams.values())
+                for gram, count in hyp_ngrams.items():
+                    clipped_counts[n - 1] += min(count, ref_ngrams.get(gram, 0))
+        precisions = []
+        for clipped, total in zip(clipped_counts, total_counts):
+            if total == 0:
+                precisions.append(0.0)
+            else:
+                precisions.append(clipped / total)
+        if min(precisions) == 0.0:
+            return 0.0
+        brevity_penalty = 1.0 if hyp_length > ref_length else math.exp(1 - ref_length / max(hyp_length, 1))
+        bleu = brevity_penalty * math.exp(sum(math.log(p) for p in precisions) / max_n)
+        return bleu
+
+    def compute_validation_bleu(model, dataset, src_lang, tgt_lang, device, max_examples = None):
+        list_of_references = []
+        hypotheses = []
+        total = len(dataset) if max_examples is None else min(len(dataset), max_examples)
+        for i in range(total):
+            src_tensor, tgt_tensor = dataset[i]
+            src_sentence = pairs[dataset.indices[i]][0]
+            predicted_tokens = translate_sentence(src_sentence, src_lang, tgt_lang, model, device)
+            reference_tokens = extract_tokens_until_eos(tgt_tensor.tolist(), tgt_lang)
+            list_of_references.append([reference_tokens])
+            hypotheses.append(predicted_tokens)
+        return corpus_bleu(list_of_references, hypotheses)
+
     print(f'The model has {count_parameters(model):,} trainable parameters')
 
 
@@ -229,18 +285,19 @@ def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
         start_time = time.time()
 
         train_loss = train(model, train_loader, optimizer, criterion, CLIP)
-        valid_loss = evaluate(model, val_loader, criterion)
+        valid_loss, valid_token_accuracy = evaluate(model, val_loader, criterion, PAD_IDX)
 
         end_time = time.time()
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            torch.save(model.state_dict(), 'seq2seq-gru-model.pt')
+            torch.save(model.state_dict(), 'seq2seq-gru-model-with-attention.pt')
 
         print(f'Epoch: {epoch+1:02} | Time: {int(end_time - start_time)}s')
         # PPL (Perplexity) is exp(loss), a common metric for language models.
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
+        print(f'\t Val. Token Acc: {100.0 * valid_token_accuracy:6.2f}%')
 
 
     ### 6.1 Inference (Greedy Decoding)
@@ -266,7 +323,7 @@ def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
         trg_indices = [SOS_IDX]
         input_tensor = torch.tensor([SOS_IDX], dtype=torch.long).to(device) # (1)
 
-        for _ in range(max_len):
+        for i in range(max_len):
             with torch.no_grad():
                 output, hidden, _ = model.decoder(input_tensor, hidden, encoder_outputs, src_mask)
 
@@ -286,7 +343,9 @@ def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
         return trg_tokens[1:-1] # Exclude <SOS> and <EOS>
 
     # Qualitative Analysis (Uncomment after training)
-    model.load_state_dict(torch.load('seq2seq-gru-model.pt'))
+    model.load_state_dict(torch.load('seq2seq-gru-model-with-attention.pt'))
+    validation_bleu = compute_validation_bleu(model, val_dataset, input_lang, output_lang, device)
+    print(f'\nWITH ATTENTION -- VALIDATION BLEU: {100.0 * validation_bleu:.2f}')
     examples = ["i am cold", "she is happy", "he is running", "we are ready"]
     for example in examples:
         translation = translate_sentence(example, input_lang, output_lang, model, device)
@@ -322,6 +381,14 @@ def run(EncoderGRU, DecoderGRU, Seq2Seq, train, evaluate):
 
     # Run after loading best model
     diagnose_model(model, input_lang, output_lang, pairs, device)
+
+    print("\n" + "=" * 70)
+    print("FINAL METRICS -- WITH ATTENTION")
+    print("=" * 70)
+    final_valid_loss, final_valid_token_accuracy = evaluate(model, val_loader, criterion, PAD_IDX)
+    print(f"Validation Loss: {final_valid_loss:.4f}")
+    print(f"Validation Token Acc: {100.0 * final_valid_token_accuracy:.2f}%")
+    print(f"Validation BLEU: {100.0 * validation_bleu:.2f}")
 
 
 def main() -> None:
