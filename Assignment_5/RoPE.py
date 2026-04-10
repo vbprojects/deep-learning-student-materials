@@ -94,7 +94,7 @@ class RoPE(nn.Module):
         raise NotImplementedError
 
         # TODO: Assign to local variable `tensor_of_rotated_inputs_with_odd_indices`
-        # the difference of the product of the tensor of inputs with even indices and the tensor of sines and
+        # the sum of the product of the tensor of inputs with even indices and the tensor of sines and
         # the product of the tensor of inputs with odd indices and the tensor of cosines. 
         raise NotImplementedError
 
