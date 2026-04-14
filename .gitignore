@@ -1,1 +1,10 @@
 __pycache__
+__pycache__/*
+__MACOSX/*
+__MACOSX
+.venv
+.venv/*
+dataset
+dataset/*
+data/*
+data
