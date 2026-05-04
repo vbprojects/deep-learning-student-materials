@@ -53,24 +53,30 @@ class Transformer(nn.Module):
 
         # TODO: Assign to local variable `scaled_normalized_input_tensor_1`
         # the output of calling the first instance of `RMSNorm` with the provided input.
-        raise NotImplementedError
+        # raise NotImplementedError
+        scaled_normalized_input_tensor_1 = self.RMSNorm_1(x)
 
         # TODO: Assign to local variables `tensor_of_outputs_of_MHLA` and `cached_tensor_of_latent_inputs`
         # the outputs of calling MHLA with the first scaled normalized input tensor and the provided cache.
-        raise NotImplementedError
+        # raise NotImplementedError
+        tensor_of_outputs_of_MHLA, cached_tensor_of_latent_inputs = self.MHLA(scaled_normalized_input_tensor_1, cache)
 
         # TODO: Assign to local variable intermediate the sum of the provided input and the tensor of outputs of MHLA.
-        raise NotImplementedError
+        # raise NotImplementedError
+        intermediate = x + tensor_of_outputs_of_MHLA
 
         # TODO: Assign to local variable `scaled_normalized_input_tensor_2`
         # the output of calling the second instance of `RMSNorm` with intermediate.
-        raise NotImplementedError
+        # raise NotImplementedError
+        scaled_normalized_input_tensor_2 = self.RMSNorm_2(intermediate)
 
         # TODO: Assign to local variable `tensor_of_outputs_of_MLP`
         # the output of calling MLP with the second scaled normalized input tensor.
-        raise NotImplementedError
+        # raise NotImplementedError
+        tensor_of_outputs_of_MLP = self.MLP(scaled_normalized_input_tensor_2)
 
         # TODO: Assign to local variable `tensor_of_outputs` the sum of intermediate and the tensor of outputs of MLP.
-        raise NotImplementedError
+        # raise NotImplementedError
+        tensor_of_outputs = intermediate + tensor_of_outputs_of_MLP
 
         return tensor_of_outputs, cached_tensor_of_latent_inputs
